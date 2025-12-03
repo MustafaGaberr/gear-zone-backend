@@ -1,0 +1,23 @@
+const express = require("express");
+const route = express.Router();
+
+const {Register,Login,getALluser,updateUser,deleteUser,forgotPassword,verifyPasswordResetCode,restPassword} = require("../controllers/user.controller");
+
+const verfiytoken = require("../middleware/verfiyToken");
+const allowedTo = require("../middleware/allowedTo");
+
+route.post('/register', Register);
+route.post('/login', Login);
+
+
+route.post('/forgotpassword', forgotPassword);
+route.post('/verifedresetCode', verifyPasswordResetCode);
+route.put('/resetpassword', restPassword);
+
+
+route.get('/', verfiytoken, allowedTo('admin'), getALluser);
+
+route.put('/:id', updateUser);
+route.delete('/:id', verfiytoken, allowedTo('admin'), deleteUser);
+
+module.exports=route

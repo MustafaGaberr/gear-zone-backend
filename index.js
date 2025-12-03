@@ -1,3 +1,4 @@
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -15,10 +16,9 @@ app.use(express.json());
 app.use(cors());
 
 //routes
-// app.use("/api/users", userRoute);
+app.use("/api/users", userRoute);
 app.use("/api/products", productRoute);
-mongoose
-  .connect(MONGO_URI)
+mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("db connected successfully");
     app.listen(process.env.PORT || 3000, () => {
