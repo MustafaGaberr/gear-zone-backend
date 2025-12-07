@@ -57,6 +57,10 @@ role:{
   ,
   token:{
     type:String
+  },
+  isActive: {
+    type: Boolean,
+    default: true 
   }
 });
 

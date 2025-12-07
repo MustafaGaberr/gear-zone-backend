@@ -1,7 +1,7 @@
 const express = require("express");
 const route = express.Router();
 
-const {Register,Login,getALluser,updateUser,deleteUser,forgotPassword,verifyPasswordResetCode,restPassword} = require("../controllers/user.controller");
+const {Register,Login,getALluser,updateUser,deleteUser,forgotPassword,verifyPasswordResetCode,restPassword,deactivateAccount,ActiveAccount} = require("../controllers/user.controller");
 
 const verfiytoken = require("../middleware/verfiyToken");
 const allowedTo = require("../middleware/allowedTo");
@@ -18,6 +18,9 @@ route.put('/resetpassword', restPassword);
 route.get('/', verfiytoken, allowedTo('admin'), getALluser);
 
 route.put('/:id', updateUser);
-route.delete('/:id', verfiytoken, allowedTo('admin'), deleteUser);
+route.delete('/:id', verfiytoken,allowedTo('admin'), deleteUser);
+
+route.patch('/deactivate',verfiytoken, deactivateAccount);
+route.patch('/activate',verfiytoken , ActiveAccount);
 
 module.exports=route

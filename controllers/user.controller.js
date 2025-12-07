@@ -39,9 +39,18 @@ let Login=async(req,res)=>{
         return res.status(400).json({status:httpstatustext.FAIL,data:{msg:"email and password is required"}})
     }
     const user =await User.findOne({email})
+
+    if (!user.isActive) {
+      return res.status(403).json({ status:httpstatustext.FAIL,data:{message: "Account is deactivated"} });
+    }
     if(!user){
         return res.status(404).json({status:httpstatustext.FAIL,data:{user:"this user is not found"}})
     }
+    if(!user.isActive){
+    return res.status(403).json({ message: "Your account is inactive" });
+    }
+
+ 
      const token=await jwt.sign({email:user.email,id:user._id,role:user.role},process.env.SECRET_KEY,{ expiresIn: '1d'})
      user.token=token
     const matchedPassworad=await bcrypt.compare(password,user.password)
@@ -148,8 +157,11 @@ let updateUser = async (req, res) => {
 let deleteUser=async(req,res)=>{
   try{
       const getUserId = req.params.id;       
-      
-       
+    //   const loggedUser = req.user;
+    //   if (loggedUser.role !== "admin" && loggedUser.id !== getUserId) {
+    //   return res.status(403).json({status:httpstatustext.FAIL ,message: "You are not allowed to delete other users" });
+    // }
+     
       const user = await User.findById(getUserId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -176,21 +188,21 @@ try {
     // Generate Reset Code
     const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Hash the Code
+    
     const hashedCode = await bcrypt.hash(resetCode, 10);
 
     // Save to DB
     user.passwordResetCode = hashedCode;
-    user.passwordResetExpired = Date.now() + 5 * 60 * 1000; // 5 minutes
+    user.passwordResetExpired = Date.now() + 5 * 60 * 1000; // 5 m
     user.passwordVerified = false;
 
-    await user.save(); // IMPORTANT!
+    await user.save();
 
   
     await sendEmail({
-      email: user.email,     // الإيميل من الداتا بيز
-      name: user.name,       // الاسم من الداتا بيز
-      resetCode: resetCode,  // الكود اللي اتولد
+      email: user.email, 
+      name: user.name,  
+      resetCode: resetCode,
       subject: 'Your password reset code (valid for 5 minutes)'
     });
     return res.status(200).json({
@@ -256,4 +268,40 @@ const restPassword=async(req,res)=>{
 }
 
 
-module.exports={Register, Login,getALluser,updateUser,deleteUser,forgotPassword,verifyPasswordResetCode,restPassword}
+
+const deactivateAccount=async(req,res)=>{
+  try{
+      const loggedUser=req.user;
+      console.log(loggedUser);
+
+      const user= await User.findById(loggedUser.id);
+      if(!user){
+        return res.status(404).json({status:httpstatustext.FAIL,message:"User not found"})
+      }
+      user.isActive=false;
+      await user.save();
+      return res.status(200).json({status:httpstatustext.SUCCESS,message:"Account deactivated successfully"})
+  }catch(e){
+    return res.status(500).json({status:httpstatustext.ERROR,message: e.message})
+  }
+}
+const ActiveAccount=async(req,res)=>{
+  try{
+      const loggedUser=req.user;
+      console.log(loggedUser);
+      const user= await User.findById(loggedUser.id);
+      if(!user){
+        return res.status(404).json({status:httpstatustext.FAIL,message:"User not found"})
+      }
+      user.isActive=true;
+      await user.save();
+      return res.status(200).json({status:httpstatustext.SUCCESS,message:"Account activated successfully"})
+  }catch(e){
+    return res.status(500).json({status:httpstatustext.ERROR,message: e.message})
+  }
+
+}
+
+
+
+module.exports={Register, Login,getALluser,updateUser,deleteUser,forgotPassword,verifyPasswordResetCode,restPassword,deactivateAccount,ActiveAccount}
