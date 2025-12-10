@@ -1,18 +1,33 @@
 const Product = require("../models/product.model.js");
+const Notification = require("../models/notification.model.js");
+const { getIO } = require('../Utilities/socket');
+
 
 const createProduct = async (req, res) => {
   try {
     const product = await Product.create(req.body);
+
+    const notification = new Notification({
+      message: `New product added: ${product.name}`,
+      type: "product_new",
+      link: `/products/${product._id}`,
+      isRead: false 
+    });
+    
+    await notification.save();
+
+    getIO().emit("notification", notification);
+    // getIO().to(sellerOrAdminId).emit("notification", notification);
+
     res.status(201).json({
       message: "Product created successfully",
       status: "success",
       code: 201,
       data: product,
     });
+
   } catch (err) {
-    res
-      .status(400)
-      .json({ error: err.message, status: "error", code: 400, data: null });
+    res.status(400).json({ error: err.message, status: "error", code: 400, data: null });
   }
 };
 
