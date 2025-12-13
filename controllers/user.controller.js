@@ -88,22 +88,70 @@ let getALluser=async(req,res)=>{
 let updateUser = async (req, res) => {
   try {
     const targetUserId = req.params.id;
-    const loggedInUser = req.body;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
 
-    if (loggedInUser.role === "buyer" && loggedInUser.id !== targetUserId) {
-      return res.status(403).json({
-        message: "You are not allowed to update another buyer",
+    // Check if user is trying to change password
+    if (currentPassword || newPassword || confirmPassword) {
+      // All password fields are required
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        return res.status(400).json({
+          status: httpstatustext.FAIL,
+          message: "currentPassword, newPassword and confirmPassword are all required"
+        });
+      }
+
+      // Check if new passwords match
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({
+          status: httpstatustext.FAIL,
+          message: "New password and confirm password do not match"
+        });
+      }
+
+      const user = await User.findById(targetUserId);
+
+      if (!user) {
+        return res.status(404).json({
+          status: httpstatustext.FAIL,
+          message: "User not found"
+        });
+      }
+
+      // Verify current password
+      const isPasswordCorrect = await bcrypt.compare(currentPassword, user.password);
+
+      if (!isPasswordCorrect) {
+        return res.status(401).json({
+          status: httpstatustext.FAIL,
+          message: "Current password is incorrect"
+        });
+      }
+
+      // Hash and save new password
+      user.password = await bcrypt.hash(newPassword, 10);
+      user.passwordChangedAt = Date.now();
+
+      // Also update other fields if provided
+      const allowedFields = ["firstName", "lastName", "userName", "email", "phone"];
+      allowedFields.forEach((field) => {
+        if (req.body[field]) {
+          user[field] = req.body[field];
+        }
+      });
+
+      await user.save();
+
+      user.password = undefined;
+
+      return res.status(200).json({
+        status: httpstatustext.SUCCESS,
+        message: "User updated successfully",
+        user,
       });
     }
 
-   
-    let allowedFields = [];
-
-    if (loggedInUser.role === "admin") {
-      allowedFields = ["firstName", "lastName", "userName", "email", "phone", "role", "isActive", "password"];
-    } else {
-      allowedFields = ["firstName", "lastName", "userName", "email", "phone", "password"];
-    }
+    // Regular update (no password change)
+    const allowedFields = ["firstName", "lastName", "userName", "email", "phone"];
 
     const updates = {};
 
@@ -113,26 +161,10 @@ let updateUser = async (req, res) => {
       }
     });
 
-  
-    if (updates.password) {
-      const user = await User.findById(targetUserId);
-
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const hashedPassword = await bcrypt.hash(updates.password, 10);
-
-      updates.password = hashedPassword;
-
-      Object.assign(user, updates);
-      await user.save();
-
-      user.password = undefined;  
-
-      return res.status(200).json({
-        message: "User updated successfully (password updated)",
-        user,
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        status: httpstatustext.FAIL,
+        message: "No valid fields to update"
       });
     }
 
@@ -146,18 +178,23 @@ let updateUser = async (req, res) => {
     );
 
     if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({
+        status: httpstatustext.FAIL,
+        message: "User not found"
+      });
     }
 
-    updatedUser.password = undefined; 
+    updatedUser.password = undefined;
 
     return res.status(200).json({
+      status: httpstatustext.SUCCESS,
       message: "User updated successfully",
       user: updatedUser,
     });
 
   } catch (error) {
     return res.status(500).json({
+      status: httpstatustext.ERROR,
       message: error.message,
     });
   }
