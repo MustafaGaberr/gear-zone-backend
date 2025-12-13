@@ -184,59 +184,66 @@ let deleteUser=async(req,res)=>{
   }
 }
 
-const forgotPassword=async(req,res)=>{
-try {
-    const user = await User.findOne({ email: req.body.email });
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body || {};
 
-    if (!user) {
-      return res
-        .status(404)
-        .json({ status: httpstatustext.FAIL, message: "This User is Not Found" });
+    if (!email) {
+      return res.status(400).json({ status: httpstatustext.FAIL, message: "Email is required" });
     }
 
-    // Generate Reset Code
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ status: httpstatustext.FAIL, message: "This User is Not Found" });
+    }
+
+    // Generate 6-digit Reset Code
     const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
-
     
-    const hashedCode = await bcrypt.hash(resetCode, 10);
+    // Hash with SHA256 (searchable in DB)
+    const hashedCode = crypto.createHash('sha256').update(resetCode).digest('hex');
 
-    // Save to DB
+    // Save to DB - expires in 15 minutes
     user.passwordResetCode = hashedCode;
-    user.passwordResetExpired = Date.now() + 5 * 60 * 1000; // 5 m
-    user.passwordVerified = false;
+    user.passwordResetExpired = Date.now() + 15 * 60 * 1000; // 15 minutes
+    user.passwordResetToken = undefined;
+    user.passwordResetTokenExpired = undefined;
 
     await user.save();
 
-  
+    // Send email
     await sendEmail({
-      email: user.email, 
-      userName: user.userName,  
+      email: user.email,
+      userName: user.userName,
       resetCode: resetCode,
-      subject: 'Your password reset code (valid for 5 minutes)'
+      subject: 'Your password reset code (valid for 15 minutes)'
     });
+
     return res.status(200).json({
-    status: httpstatustext.SUCCESS,
-    message: "Reset code sent to email",
-  });
+      status: httpstatustext.SUCCESS,
+      message: "Reset code sent to email"
+    });
 
   } catch (err) {
-    return res
-      .status(500)
-      .json({ status: httpstatustext.ERROR, message: err.message });
+    return res.status(500).json({ status: httpstatustext.ERROR, message: err.message });
   }
 }
 
 const verifyPasswordResetCode = async (req, res) => {
   try {
-    const { email, resetCode } = req.body || {};
+    const { resetCode } = req.body || {};
 
-    if (!email || !resetCode) {
-      return res.status(400).json({ status: httpstatustext.FAIL, message: "Email and reset code are required" });
+    if (!resetCode) {
+      return res.status(400).json({ status: httpstatustext.FAIL, message: "Reset code is required" });
     }
 
-    // Find user by email with valid reset code
+    // Hash the reset code to search in DB
+    const hashedCode = crypto.createHash('sha256').update(resetCode).digest('hex');
+
+    // Find user by reset code hash with valid expiry
     const user = await User.findOne({
-      email,
+      passwordResetCode: hashedCode,
       passwordResetExpired: { $gt: Date.now() }
     });
 
@@ -244,20 +251,13 @@ const verifyPasswordResetCode = async (req, res) => {
       return res.status(404).json({ status: httpstatustext.FAIL, message: "Reset Code Invalid or Expired" });
     }
 
-    // Verify the reset code
-    const isValidCode = await bcrypt.compare(resetCode, user.passwordResetCode);
-
-    if (!isValidCode) {
-      return res.status(400).json({ status: httpstatustext.FAIL, message: "Reset Code Invalid or Expired" });
-    }
-
-    // Generate a temporary reset token
+    // Generate a temporary reset token for password reset
     const resetToken = crypto.randomBytes(32).toString('hex');
     const hashedResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
 
-    // Save the hashed token and set expiry (10 minutes)
+    // Save the hashed token and set expiry (15 minutes)
     user.passwordResetToken = hashedResetToken;
-    user.passwordResetTokenExpired = Date.now() + 10 * 60 * 1000;
+    user.passwordResetTokenExpired = Date.now() + 15 * 60 * 1000;
     user.passwordResetCode = undefined;
     user.passwordResetExpired = undefined;
 
