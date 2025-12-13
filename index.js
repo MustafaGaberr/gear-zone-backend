@@ -7,7 +7,7 @@ const userRoute = require("./routes/user.routes.js");
 const productRoute = require("./routes/product.routes.js");
 const http = require("http"); 
 const { init } = require('./Utilities/socket.js'); 
-dotenv.config();
+dotenv.config({ quiet: true });
 const MONGO_URI = process.env.MONGO_URI;
 
 

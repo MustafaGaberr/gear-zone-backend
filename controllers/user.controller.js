@@ -2,29 +2,36 @@ const httpstatustext=require("../Utilities/httpstatustext")
 const User=require("../models/user.model")
 const bcrypt=require("bcrypt")
 const jwt =require("jsonwebtoken")
+const crypto = require("crypto")
 const sendEmail=require("../Utilities/sendEmail")
 
 let Register=async(req,res)=>{
    try{
-        const {name,email,password,role,phone}=req.body;
-        if(!name || !email || !password || !phone){
-            return res.status(400).json({status:httpstatustext.FAIL,message:'name , email , possward and phone are required'})
+        const {firstName,lastName,userName,email,password,role,phone}=req.body;
+        if(!firstName || !lastName || !userName || !email || !password){
+            return res.status(400).json({status:httpstatustext.FAIL,message:'firstName, lastName, userName, email and password are required'})
         }
         const existEmail=await User.findOne({ email })
         if(existEmail){
             return res.status(409).json({status:httpstatustext.FAIL,message:'this email is already exist'})
         }
+        const existUserName=await User.findOne({ userName })
+        if(existUserName){
+            return res.status(409).json({status:httpstatustext.FAIL,message:'this username is already taken'})
+        }
         const hashedpassworad=await bcrypt.hash(password,10)
         // console.log("Password received:", req.body.password);
 
         const newUser=await User.create({
-            name,
+            firstName,
+            lastName,
+            userName,
             email,
             password:hashedpassworad,
             phone,
             role: role||'buyer',
         })
-        const token= await jwt.sign({ email: newUser.email, id: newUser._id, role: newUser.role }, process.env.SECRET_KEY, { expiresIn: "1d" })
+        const token= await jwt.sign({ email: newUser.email, id: newUser._id, role: newUser.role }, process.env.JWT_SECRET, { expiresIn: "1d" })
         newUser.token=token;
 
         return res.status(201).json({status:httpstatustext.SUCCESS,data:{user:newUser}})
@@ -34,32 +41,34 @@ let Register=async(req,res)=>{
    }
 }
 let Login=async(req,res)=>{
-     const {email,password}=req.body
-    if(!email || !password){
-        return res.status(400).json({status:httpstatustext.FAIL,data:{msg:"email and password is required"}})
-    }
-    const user =await User.findOne({email})
+    try {
+        console.log("Login req.body:", req.body); // Debug log
+        const {email,password} = req.body || {};
+        if(!email || !password){
+            return res.status(400).json({status:httpstatustext.FAIL,data:{msg:"email and password is required"}})
+        }
+        const user = await User.findOne({email})
 
-    if (!user.isActive) {
-      return res.status(403).json({ status:httpstatustext.FAIL,data:{message: "Account is deactivated"} });
-    }
-    if(!user){
-        return res.status(404).json({status:httpstatustext.FAIL,data:{user:"this user is not found"}})
-    }
-    if(!user.isActive){
-    return res.status(403).json({ message: "Your account is inactive" });
-    }
+        if(!user){
+            return res.status(404).json({status:httpstatustext.FAIL,data:{user:"this user is not found"}})
+        }
 
- 
-     const token=await jwt.sign({email:user.email,id:user._id,role:user.role},process.env.SECRET_KEY,{ expiresIn: '1d'})
-     user.token=token
-    const matchedPassworad=await bcrypt.compare(password,user.password)
-    if(user && matchedPassworad){
-        return res.status(200).json({status:httpstatustext.SUCCESS,data:{user:token}})
-    }else{
-        return res.status(401).json({status:httpstatustext.FAIL,data:null})
-    }
+        if (!user.isActive) {
+            return res.status(403).json({ status:httpstatustext.FAIL,data:{message: "Account is deactivated"} });
+        }
 
+        const matchedPassworad = await bcrypt.compare(password, user.password)
+        if(!matchedPassworad){
+            return res.status(401).json({status:httpstatustext.FAIL,data:null})
+        }
+
+        const token = await jwt.sign({email:user.email, id:user._id, role:user.role}, process.env.JWT_SECRET, { expiresIn: '1d'})
+        user.token = token
+
+        return res.status(200).json({status:httpstatustext.SUCCESS,data:{token}})
+    } catch(e) {
+        return res.status(500).json({status:httpstatustext.ERROR,message: e.message})
+    }
 }
 let getALluser=async(req,res)=>{
     const query=req.query
@@ -91,9 +100,9 @@ let updateUser = async (req, res) => {
     let allowedFields = [];
 
     if (loggedInUser.role === "admin") {
-      allowedFields = ["name", "email", "phone", "role", "isActive", "password"];
+      allowedFields = ["firstName", "lastName", "userName", "email", "phone", "role", "isActive", "password"];
     } else {
-      allowedFields = ["name", "email", "phone", "password"];
+      allowedFields = ["firstName", "lastName", "userName", "email", "phone", "password"];
     }
 
     const updates = {};
@@ -201,7 +210,7 @@ try {
   
     await sendEmail({
       email: user.email, 
-      name: user.name,  
+      userName: user.userName,  
       resetCode: resetCode,
       subject: 'Your password reset code (valid for 5 minutes)'
     });
@@ -219,52 +228,95 @@ try {
 
 const verifyPasswordResetCode = async (req, res) => {
   try {
+    const { email, resetCode } = req.body || {};
+
+    if (!email || !resetCode) {
+      return res.status(400).json({ status: httpstatustext.FAIL, message: "Email and reset code are required" });
+    }
+
+    // Find user by email with valid reset code
     const user = await User.findOne({
-      passwordResetExpired: { $gt: Date.now() } // الكود لسه صالح
+      email,
+      passwordResetExpired: { $gt: Date.now() }
     });
 
     if (!user) {
       return res.status(404).json({ status: httpstatustext.FAIL, message: "Reset Code Invalid or Expired" });
     }
 
-    const isValidCode = await bcrypt.compare(req.body.resetCode, user.passwordResetCode);
+    // Verify the reset code
+    const isValidCode = await bcrypt.compare(resetCode, user.passwordResetCode);
 
     if (!isValidCode) {
       return res.status(400).json({ status: httpstatustext.FAIL, message: "Reset Code Invalid or Expired" });
     }
 
-    user.passwordVerified = true;
+    // Generate a temporary reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    // Save the hashed token and set expiry (10 minutes)
+    user.passwordResetToken = hashedResetToken;
+    user.passwordResetTokenExpired = Date.now() + 10 * 60 * 1000;
+    user.passwordResetCode = undefined;
+    user.passwordResetExpired = undefined;
+
     await user.save();
 
-    return res.status(200).json({ status: httpstatustext.SUCCESS, message: "Code verified successfully" });
+    return res.status(200).json({ 
+      status: httpstatustext.SUCCESS, 
+      message: "Code verified successfully",
+      resetToken: resetToken
+    });
   } catch (err) {
     return res.status(500).json({ status: httpstatustext.ERROR, message: err.message });
   }
 };
 
-const restPassword=async(req,res)=>{
-  const user= await User.findOne({email:req.body.email})
+const resetPassword = async (req, res) => {
+  try {
+    const { resetToken, newPassword } = req.body || {};
 
-  if(!user){
-    return res.status(404).json({status:httpstatustext.FAIL,message:`this user ${user.email} is not found`})
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ status: httpstatustext.FAIL, message: "Reset token and new password are required" });
+    }
+
+    // Hash the token to compare with stored hash
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    // Find user by token and check if not expired
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetTokenExpired: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ status: httpstatustext.FAIL, message: "Reset token is invalid or expired" });
+    }
+
+    // Update password
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.passwordResetToken = undefined;
+    user.passwordResetTokenExpired = undefined;
+    user.passwordChangedAt = Date.now();
+
+    await user.save();
+
+    // Generate new auth token
+    const token = await jwt.sign(
+      { email: user.email, id: user._id, role: user.role }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: "1d" }
+    );
+
+    return res.status(200).json({ 
+      status: httpstatustext.SUCCESS, 
+      message: "Password reset successfully",
+      token 
+    });
+  } catch (err) {
+    return res.status(500).json({ status: httpstatustext.ERROR, message: err.message });
   }
-
-  if(!user.passwordVerified){
-    return res.status(400).json({status:httpstatustext.FAIL,message:"Reset code is not verified"})
-  }
-
-  
-  user.password = await bcrypt.hash(req.body.newPassword, 10);
-  user.passwordResetCode=undefined
-  user.passwordVerified=undefined
-  user.passwordResetExpired=undefined
-
-  await user.save()
-
-  const token= await jwt.sign({ email: user.email, id: user._id, role: user.role }, process.env.SECRET_KEY, { expiresIn: "1d" })
-  res.status(200).json({token})
- 
-  
 }
 
 
@@ -304,4 +356,4 @@ const ActiveAccount=async(req,res)=>{
 
 
 
-module.exports={Register, Login,getALluser,updateUser,deleteUser,forgotPassword,verifyPasswordResetCode,restPassword,deactivateAccount,ActiveAccount}
+module.exports={Register, Login,getALluser,updateUser,deleteUser,forgotPassword,verifyPasswordResetCode,resetPassword,deactivateAccount,ActiveAccount}
