@@ -6,7 +6,7 @@ const {Register,Login,getALluser,updateUser,deleteUser,forgotPassword,verifyPass
 const verfiytoken = require("../middleware/verfiyToken");
 const allowedTo = require("../middleware/allowedTo");
 
-route.post('/register',allowedTo('buyer','seller') ,Register);
+route.post('/register',Register);
 route.post('/login', Login);
 
 
