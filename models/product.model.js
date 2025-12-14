@@ -6,22 +6,34 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: [true, "Product name is required"],
     },
+    description: {
+      type: String,
+      required: [true, "Product description is required"],
+    },
     price: {
       type: Number,
       required: [true, "Product price is required"],
       min: [1, "Product price must be at least 1"],
       default: 0,
     },
-    quantity: {
+    stock: {
       type: Number,
-      required: [true, "Product quantity is required"],
-      min: [0, "Product quantity cannot be negative"],
+      required: [true, "Product stock is required"],
+      min: [0, "Product stock cannot be negative"],
       default: 0,
     },
-    image: {
+    category: {
+      type: String,
+      required: [true, "Product category is required"],
+    },
+    images: {
       type: String,
       required: false,
-      default: "default.png",
+      default: "default.webp",
+    },
+    seller: {
+      type: String,
+      required: [true, "Product seller is required"],
     },
   },
   {

@@ -34,7 +34,16 @@ let Register=async(req,res)=>{
         const token= await jwt.sign({ email: newUser.email, id: newUser._id, role: newUser.role }, process.env.JWT_SECRET, { expiresIn: "1d" })
         newUser.token=token;
 
-        return res.status(201).json({status:httpstatustext.SUCCESS,data:{user:newUser}})
+        return res.status(201).json({status:httpstatustext.SUCCESS,data:{user:{
+          id:newUser._id,
+          firstName:newUser.firstName,
+          lastName:newUser.lastName,
+          userName:newUser.userName,
+          email:newUser.email,
+          phone:newUser.phone,
+          role:newUser.role,
+          token:newUser.token
+        }}})
 
    }catch(e){
         return res.status(500).json({status:httpstatustext.ERROR,message: e.message})
@@ -77,7 +86,16 @@ let getALluser=async(req,res)=>{
     const skip=(page-1)*limit
     try{
         const getAlluser=await User.find({},{"__v":false,"password":false}).limit(limit).skip(skip);
-        return res.status(200).json({status:httpstatustext.SUCCESS,data:{Users:getAlluser}})
+        return res.status(200).json({status:httpstatustext.SUCCESS,data:{Users:{
+          id:getAlluser._id,
+          firstName:getAlluser.firstName,
+          lastName:getAlluser.lastName,
+          userName:getAlluser.userName,
+          email:getAlluser.email,
+          phone:getAlluser.phone,
+          role:getAlluser.role,
+          token:getAlluser.token
+        }}})
     }catch(e){
       return res.status(500).json({
       status: httpstatustext.ERROR,
