@@ -7,7 +7,7 @@ const userRoute = require("./routes/user.routes.js");
 const productRoute = require("./routes/product.routes.js");
 const http = require("http"); 
 const { init } = require('./Utilities/socket.js'); 
-dotenv.config();
+dotenv.config({ quiet: true });
 const MONGO_URI = process.env.MONGO_URI;
 
 
@@ -34,8 +34,8 @@ mongoose.connect(MONGO_URI)
     });
 
   
-    server.listen(process.env.PORT || 3000, () => {
-      console.log(`server is listening on port ${process.env.PORT || 3000}`);
+    server.listen(process.env.PORT, () => {
+      console.log(`server is listening on port ${process.env.PORT}`);
     });
 
   })

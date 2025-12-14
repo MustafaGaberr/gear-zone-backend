@@ -23,7 +23,16 @@ const createProduct = async (req, res) => {
       message: "Product created successfully",
       status: "success",
       code: 201,
-      data: product,
+      data: {
+        id:product._id,
+        name:product.name,
+        description:product.description,
+        price:product.price,
+        stock:product.stock,
+        category:product.category,
+        images:product.images,
+        seller:product.seller,
+      },
     });
 
   } catch (err) {
@@ -37,7 +46,7 @@ const getAllProducts = async (req, res) => {
     const page = parseInt(query.page) || 1;
     const limit = parseInt(query.limit) || 10;
     const skip = (page - 1) * limit;
-    const products = await Product.find({}, { __v: false })
+    const products = await Product.find({ __v: false })
       .limit(limit)
       .skip(skip);
     if (!products)
@@ -53,7 +62,16 @@ const getAllProducts = async (req, res) => {
       message: "Products retrieved successfully",
       status: "success",
       code: 200,
-      data: products,
+      data: products.map(product => ({
+        id: product._id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        stock: product.stock,
+        category: product.category,
+        images: product.images,
+        seller: product.seller,
+      })),
       pagination: {
         page,
         limit,
@@ -85,7 +103,16 @@ const getProductById = async (req, res) => {
       message: "Product retrieved successfully",
       status: "success",
       code: 200,
-      data: product,
+      data: {
+        id:product._id,
+        name:product.name,
+        description:product.description,
+        price:product.price,
+        stock:product.stock,
+        category:product.category,
+        images:product.images,
+        seller:product.seller,
+      },
     });
   } catch (error) {
     res
@@ -114,7 +141,16 @@ const updateProductById = async (req, res) => {
       message: "Product updated successfully",
       status: "success",
       code: 200,
-      data: updatedProduct,
+      data: {
+        id:updatedProduct._id,
+        name:updatedProduct.name,
+        description:updatedProduct.description,
+        price:updatedProduct.price,
+        stock:updatedProduct.stock,
+        category:updatedProduct.category,
+        images:updatedProduct.images,
+        seller:updatedProduct.seller,
+      },
     });
   } catch (error) {
     res.status(400).json({ error: error.message });

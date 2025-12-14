@@ -1,11 +1,29 @@
 const mongoose = require("mongoose");
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
 
 const userSchema = new mongoose.Schema({
-  name: {
+  firstName: {
     type: String,
-    required: [true, "Name is required"],
-    minlength: [3, "Name must be at least 3 characters"],
-    maxlength: [50, "Name must be less than 50 characters"],
+    required: [true, "First name is required"],
+    minlength: [2, "First name must be at least 2 characters"],
+    maxlength: [30, "First name must be less than 30 characters"],
+    trim: true
+  },
+
+  lastName: {
+    type: String,
+    required: [true, "Last name is required"],
+    minlength: [2, "Last name must be at least 2 characters"],
+    maxlength: [30, "Last name must be less than 30 characters"],
+    trim: true
+  },
+
+  userName: {
+    type: String,
+    required: [true, "Username is required"],
+    unique: true,
+    minlength: [3, "Username must be at least 3 characters"],
+    maxlength: [20, "Username must be less than 20 characters"],
     trim: true
   },
 
@@ -21,38 +39,44 @@ const userSchema = new mongoose.Schema({
     ]
   },
 
- password: {
-  type: String,
-  required: [true, "Password is required"],
-  minlength: [6, "Password must be at least 6 characters"],
-  validate: {
-    validator: function (value) {
-      // At least 1 uppercase, 1 lowercase, 1 digit, 1 special character
-      return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/.test(value);
-    },
-    message:
-      "Password must contain at least 1 uppercase, 1 lowercase, 1 number, and 1 special character",
-  },
-},
-passwordChangedAt:{
-  type:Date
-},
-passwordResetCode:{
-  type:String
-},
-passwordResetExpired:{
-  type:Date
-},
-passwordVerified:{
-  type:Boolean
-},
-role:{
+  phone: {
     type: String,
-    enum: ["admin", "seller", "buyer"], // roles allowed
-    default: "buyer"
+    trim: true
   },
-  phone:{
-     type: String,
+
+  password: {
+    type: String,
+    required: [true, "Password is required"],
+    minlength: [8, "Password must be at least 8 characters"],
+    validate: {
+      validator: function (value) {
+        // At least 1 uppercase, 1 lowercase, 1 digit, 1 special character
+        return passwordRegex.test(value);
+      },
+      message:
+        "Password must contain at least 1 uppercase and 1 lowercase character and must be at least 8 characters",
+    },
+  },
+
+  passwordChangedAt: {
+    type: Date
+  },
+  passwordResetCode: {
+    type: String
+  },
+  passwordResetExpired: {
+    type: Date
+  },
+  passwordResetToken: {
+    type: String
+  },
+  passwordResetTokenExpired: {
+    type: Date
+  },
+  role: {
+    type: String,
+    enum: ["admin", "seller", "buyer"],
+    default: "buyer"
   }
   ,
   token:{
