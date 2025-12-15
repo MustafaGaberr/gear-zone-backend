@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f0f2f5; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        input, button { padding: 10px; margin: 5px 0; width: 95%; border: 1px solid #ddd; border-radius: 5px; }
+        button { background-color: #0084ff; color: white; cursor: pointer; font-weight: bold; border: none; }
+        button:hover { background-color: #006bbd; }
+        #messages-area { height: 300px; overflow-y: scroll; border: 1px solid #ddd; margin-top: 10px; padding: 10px; background: #e5ddd5; }
+        .msg { padding: 8px 12px; margin-bottom: 8px; border-radius: 15px; width: fit-content; max-width: 80%; }
+        .incoming { background: white; align-self: flex-start; }
+        .outgoing { background: #dcf8c6; margin-right: auto; } 
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="text-align: center;">💬 Auto-Load Chat</h2>
+
+    <div id="login-section">
+        <label> How am I (My ID)</label>
+        <input type="text" id="myId" placeholder="User ID">
+        <button onclick="connectSocket()">Entry (Connect)</button>
+    </div>
+
+    <div id="chat-section" style="display: none;">
+        <h3 style="color: green;">✅  Active Now</h3>
+        
+        <label> Talk with? (Friend ID)</label>
+        <input type="text" id="friendId" placeholder="Enter Friend ID" onchange="loadChatHistory()">
+
+        <div id="messages-area">
+            <p style="text-align: center; color: gray; font-size: 14px;">  Friend ID  </p>
+        </div>
+
+        <div style="display: flex; gap: 5px; margin-top: 10px;">
+            <input type="text" id="msgInput" placeholder="Write your messages" style="width: 80%;">
+            <button onclick="sendMessage()" style="width: 20%;">send</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let socket;
+    let myId = "";
+
+    function connectSocket() {
+        myId = document.getElementById("myId").value;
+        if (!myId) return alert("Write your ID");
+
+        socket = io("http://localhost:4000", { 
+           query: { id: myId }
+        });
+
+        document.getElementById("login-section").style.display = "none";
+        document.getElementById("chat-section").style.display = "block";
+
+        socket.on("private_message", (data) => {
+
+            const currentFriend = document.getElementById("friendId").value;
+            if (data.senderId === currentFriend) {
+                appendMessage(data.contentMes, 'incoming');
+            } else {
+                console.log(" Message from another person:", data.senderId);
+                   }
+        });
+
+        console.log("Connected with Handshake!");
+    }
+
+    async function loadChatHistory() {
+        const friendId = document.getElementById("friendId").value;
+        const msgBox = document.getElementById("messages-area");
+        
+        if (!friendId) return;
+
+        msgBox.innerHTML = "<p style='text-align:center'>Loading conversation...</p>";
+
+        try {
+            const res = await fetch(`http://localhost:4000/api/chat/history/${friendId}?myId=${myId}`);
+            const result = await res.json();
+
+            msgBox.innerHTML = ""; 
+            console.log(" Msg is:", result.data[0]);
+            if (result.status === "success") {
+                if(result.data.length === 0) {
+                    msgBox.innerHTML = "<p style='text-align:center; color:gray'>There are no previous messages</p>";
+                }
+                result.data.forEach(msg => {
+                    const type = (msg.sender === myId) ? 'outgoing' : 'incoming';
+                    appendMessage(msg.contentMes, type);
+                });
+            }
+        } catch (err) {
+            console.error(err);
+            msgBox.innerHTML = "<p style='color:red; text-align:center'>Connection failed</p>";
+        }
+    }
+
+    async function sendMessage() {
+        console.log('Id send' , myId);
+        const friendId = document.getElementById("friendId").value;
+        const content = document.getElementById("msgInput").value;
+
+        if (!friendId || !content) return;
+
+        appendMessage(content, 'outgoing');
+        document.getElementById("msgInput").value = "";
+
+        try {
+            await fetch("http://localhost:4000/api/chat/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    senderId: myId,    
+                    recipientId: friendId,
+                    content: content
+                })
+            });
+        } catch (err) { console.error(err); }
+    }
+
+    function appendMessage(text, type) {
+        if(!text) return;
+        const msgDiv = document.createElement("div");
+        msgDiv.classList.add("msg", type);
+        msgDiv.innerText = text;
+        const box = document.getElementById("messages-area");
+        box.appendChild(msgDiv);
+        box.scrollTop = box.scrollHeight; 
+    }
+</script>
+
+</body>
+</html>
