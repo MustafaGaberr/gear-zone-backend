@@ -1,5 +1,7 @@
 const express = require("express");
 const router = express.Router();
+const verfiytoken = require("../middleware/verfiyToken");
+const allowedTo = require("../middleware/allowedTo");
 const {
   createProduct,
   getAllProducts,
