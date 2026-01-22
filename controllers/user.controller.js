@@ -11,6 +11,7 @@ let Register=async(req,res)=>{
         if(!firstName || !lastName || !userName || !email || !password){
             return res.status(400).json({status:httpstatustext.FAIL,message:'firstName, lastName, userName, email and password are required'})
         }
+       
         if (role && !['buyer', 'seller'].includes(role)) {
           return res.status(400).json({
             status: httpstatustext.FAIL,
