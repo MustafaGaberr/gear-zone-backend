@@ -18,12 +18,13 @@ const addToCart = async (req, res) => {
     if (product.stock < quantityToAdd) {
         return res.status(400).json({ msg: `Out of stock. Only ${product.stock} left.` });
     }
-
-    let cart = await Cart.findOne({ user: req.user.id });
+    // const userId = req.body.user;
+    const userId = req.user.id;
+    let cart = await Cart.findOne({ user: userId });
 
     if (!cart) {
       cart = await Cart.create({
-        user: req.user.id,
+        user: userId,
         cartItems: [{ 
             product: productId, 
             color: color, 
@@ -76,7 +77,9 @@ const addToCart = async (req, res) => {
 // ---------------------------------------------------------
 const getLoggedUserCart = async (req, res) => {
   try {
-    const cart = await Cart.findOne({ user: req.user.id })
+    // const userId = req.body.user;
+    const userId = req.user.id;
+    const cart = await Cart.findOne({ user: userId })
         .populate('cartItems.product', 'name imageCover price slug'); 
 
     if (!cart) {
@@ -98,8 +101,10 @@ const getLoggedUserCart = async (req, res) => {
 // ---------------------------------------------------------
 const removeCartItem = async (req, res) => {
   try {
+    // const userId = req.body.user;
+    const userId = req.user.id;
     const cart = await Cart.findOneAndUpdate(
-      { user: req.user.id },
+      { user: userId },
       {
         $pull: { cartItems: { _id: req.params.itemId } }, 
       },
@@ -130,8 +135,9 @@ const updateCartItemQuantity = async (req, res) => {
     try {
         const { quantity } = req.body; 
         const { itemId } = req.params;
-
-        const cart = await Cart.findOne({ user: req.user.id });
+// const userId = req.body.user;
+    const userId = req.user.id;
+        const cart = await Cart.findOne({ user: userId });
         if (!cart) return res.status(404).json({ msg: "Cart not found" });
 
         const itemIndex = cart.cartItems.findIndex(item => item._id.toString() === itemId);
@@ -169,8 +175,22 @@ const updateCartItemQuantity = async (req, res) => {
 // ---------------------------------------------------------
 const clearCart = async (req, res) => {
     try {
-        await Cart.findOneAndDelete({ user: req.user.id });
-        res.status(204).send();
+        // const userId = req.body.user;
+        const userId = req.user.id;
+        const cart = await Cart.findOneAndDelete({ user: userId });
+
+    if (!cart) {
+        return res.status(404).json({ 
+            status: 'fail',
+            message: 'Cart is already empty or not found' 
+        });
+    }
+
+    res.status(200).json({
+        status: 'success',
+        message: 'Cart cleared successfully',
+        numOfCartItems: 0 
+    });
     } catch (error) {
         res.status(500).json({ msg: error.message });
     }
