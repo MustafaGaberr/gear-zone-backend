@@ -5,6 +5,8 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const userRoute = require("./routes/user.routes.js");
 const productRoute = require("./routes/product.routes.js");
+const chatRoute = require("./routes/chat.routes.js");
+const cartRoute = require("./routes/cart.routes.js");
 const http = require("http"); 
 const { init } = require('./Utilities/socket.js'); 
 dotenv.config({ quiet: true });
@@ -19,6 +21,9 @@ app.use(cors());
 //routes
 app.use("/api/users", userRoute);
 app.use("/api/products", productRoute);
+app.use("/api/chat", chatRoute); 
+app.use("/api/cart", cartRoute);
+
 
 //
 const server = http.createServer(app);
