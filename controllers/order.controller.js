@@ -3,7 +3,14 @@ const Product = require("../models/product.model");
 const httpstatustext = require("../Utilities/httpstatustext");
 const mongoose = require("mongoose");
 
-const createOrder = async (req, res) => {
+// Helper function to create error with status
+const createError = (message, status = 500) => {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+};
+
+const createOrder = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
@@ -11,7 +18,9 @@ const createOrder = async (req, res) => {
     const userId = req.user.id; // From verifyToken middleware
 
     if (!products || products.length === 0) {
-      return res.status(400).json({ status: httpstatustext.FAIL, message: "No products in order" });
+      await session.abortTransaction();
+      session.endSession();
+      return next(createError("No products in order", 400));
     }
 
     let totalAmount = 0;
@@ -59,11 +68,11 @@ const createOrder = async (req, res) => {
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
-    res.status(500).json({ status: httpstatustext.ERROR, message: err.message });
+    next(err);
   }
 };
 
-const getUserOrders = async (req, res) => {
+const getUserOrders = async (req, res, next) => {
   try {
     const userId = req.user.id; // From verifyToken middleware
     const page = parseInt(req.query.page) || 1;
@@ -106,11 +115,11 @@ const getUserOrders = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ status: httpstatustext.ERROR, message: err.message });
+    next(err);
   }
 };
 
-const getOrderDetails = async (req, res) => {
+const getOrderDetails = async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.user.id; 
@@ -119,7 +128,7 @@ const getOrderDetails = async (req, res) => {
       .populate("products.productId", "name images");
 
     if (!order) {
-      return res.status(404).json({ status: httpstatustext.FAIL, message: "Order not found" });
+      return next(createError("Order not found", 404));
     }
 
     res.status(200).json({
@@ -144,11 +153,11 @@ const getOrderDetails = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ status: httpstatustext.ERROR, message: err.message });
+    next(err);
   }
 };
 
-const updateOrderStatus = async (req, res) => {
+const updateOrderStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status, trackingNumber } = req.body;
@@ -156,7 +165,7 @@ const updateOrderStatus = async (req, res) => {
     // Only admin or seller should be allowed to update status. This will be handled by middleware.
     const allowedStatuses = ["Processing", "Delivered", "In Transit", "Cancelled"];
     if (status && !allowedStatuses.includes(status)) {
-      return res.status(400).json({ status: httpstatustext.FAIL, message: "Invalid order status" });
+      return next(createError("Invalid order status", 400));
     }
 
     const updatedOrder = await Order.findByIdAndUpdate(
@@ -166,12 +175,12 @@ const updateOrderStatus = async (req, res) => {
     ).populate("products.productId", "name images");
 
     if (!updatedOrder) {
-      return res.status(404).json({ status: httpstatustext.FAIL, message: "Order not found" });
+      return next(createError("Order not found", 404));
     }
 
     res.status(200).json({ status: httpstatustext.SUCCESS, data: { order: updatedOrder } });
   } catch (err) {
-    res.status(500).json({ status: httpstatustext.ERROR, message: err.message });
+    next(err);
   }
 };
 

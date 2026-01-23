@@ -5,26 +5,30 @@ const jwt =require("jsonwebtoken")
 const crypto = require("crypto")
 const sendEmail=require("../Utilities/sendEmail")
 
-let Register=async(req,res)=>{
+// Helper function to create error with status
+const createError = (message, status = 500) => {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+};
+
+let Register=async(req,res,next)=>{
    try{
         const {firstName,lastName,userName,email,password,role,phone}=req.body;
         if(!firstName || !lastName || !userName || !email || !password){
-            return res.status(400).json({status:httpstatustext.FAIL,message:'firstName, lastName, userName, email and password are required'})
+            return next(createError('firstName, lastName, userName, email and password are required', 400))
         }
        
         if (role && !['buyer', 'seller'].includes(role)) {
-          return res.status(400).json({
-            status: httpstatustext.FAIL,
-            message: 'Role must be buyer or seller only'
-          });
+          return next(createError('Role must be buyer or seller only', 400));
         }
         const existEmail=await User.findOne({ email })
         if(existEmail){
-            return res.status(409).json({status:httpstatustext.FAIL,message:'this email is already exist'})
+            return next(createError('this email is already exist', 409))
         }
         const existUserName=await User.findOne({ userName })
         if(existUserName){
-            return res.status(409).json({status:httpstatustext.FAIL,message:'this username is already taken'})
+            return next(createError('this username is already taken', 409))
         }
         const hashedpassworad=await bcrypt.hash(password,10)
         // console.log("Password received:", req.body.password);
@@ -53,29 +57,29 @@ let Register=async(req,res)=>{
         }}})
 
    }catch(e){
-        return res.status(500).json({status:httpstatustext.ERROR,message: e.message})
+        next(e)
    }
 }
-let Login=async(req,res)=>{
+let Login=async(req,res,next)=>{
     try {
         console.log("Login req.body:", req.body); // Debug log
         const {email,password} = req.body || {};
         if(!email || !password){
-            return res.status(400).json({status:httpstatustext.FAIL,data:{msg:"email and password is required"}})
+            return next(createError("email and password is required", 400))
         }
         const user = await User.findOne({email})
 
         if(!user){
-            return res.status(404).json({status:httpstatustext.FAIL,data:{user:"this user is not found"}})
+            return next(createError("this user is not found", 404))
         }
 
         if (!user.isActive) {
-            return res.status(403).json({ status:httpstatustext.FAIL,data:{message: "Account is deactivated"} });
+            return next(createError("Account is deactivated", 403));
         }
 
         const matchedPassworad = await bcrypt.compare(password, user.password)
         if(!matchedPassworad){
-            return res.status(401).json({status:httpstatustext.FAIL,data:null})
+            return next(createError("Invalid credentials", 401))
         }
 
         const token = await jwt.sign({email:user.email, id:user._id, role:user.role}, process.env.JWT_SECRET, { expiresIn: '1d'})
@@ -83,10 +87,10 @@ let Login=async(req,res)=>{
 
         return res.status(200).json({status:httpstatustext.SUCCESS,data:{token}})
     } catch(e) {
-        return res.status(500).json({status:httpstatustext.ERROR,message: e.message})
+        next(e)
     }
 }
-let getALluser=async(req,res)=>{
+let getALluser=async(req,res,next)=>{
     const query=req.query
     const limit=query.limit ;
     const page=query.page || 1
@@ -104,13 +108,10 @@ let getALluser=async(req,res)=>{
           token:getAlluser.token
         }}})
     }catch(e){
-      return res.status(500).json({
-      status: httpstatustext.ERROR,
-      message: e.message
-    });
+      next(e)
     }
 }
-let updateUser = async (req, res) => {
+let updateUser = async (req, res, next) => {
   try {
     const targetUserId = req.params.id;
     const { currentPassword, newPassword, confirmPassword } = req.body;
@@ -119,37 +120,25 @@ let updateUser = async (req, res) => {
     if (currentPassword || newPassword || confirmPassword) {
       // All password fields are required
       if (!currentPassword || !newPassword || !confirmPassword) {
-        return res.status(400).json({
-          status: httpstatustext.FAIL,
-          message: "currentPassword, newPassword and confirmPassword are all required"
-        });
+        return next(createError("currentPassword, newPassword and confirmPassword are all required", 400));
       }
 
       // Check if new passwords match
       if (newPassword !== confirmPassword) {
-        return res.status(400).json({
-          status: httpstatustext.FAIL,
-          message: "New password and confirm password do not match"
-        });
+        return next(createError("New password and confirm password do not match", 400));
       }
 
       const user = await User.findById(targetUserId);
 
       if (!user) {
-        return res.status(404).json({
-          status: httpstatustext.FAIL,
-          message: "User not found"
-        });
+        return next(createError("User not found", 404));
       }
 
       // Verify current password
       const isPasswordCorrect = await bcrypt.compare(currentPassword, user.password);
 
       if (!isPasswordCorrect) {
-        return res.status(401).json({
-          status: httpstatustext.FAIL,
-          message: "Current password is incorrect"
-        });
+        return next(createError("Current password is incorrect", 401));
       }
 
       // Hash and save new password
@@ -187,10 +176,7 @@ let updateUser = async (req, res) => {
     });
 
     if (Object.keys(updates).length === 0) {
-      return res.status(400).json({
-        status: httpstatustext.FAIL,
-        message: "No valid fields to update"
-      });
+      return next(createError("No valid fields to update", 400));
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -203,10 +189,7 @@ let updateUser = async (req, res) => {
     );
 
     if (!updatedUser) {
-      return res.status(404).json({
-        status: httpstatustext.FAIL,
-        message: "User not found"
-      });
+      return next(createError("User not found", 404));
     }
 
     updatedUser.password = undefined;
@@ -218,46 +201,43 @@ let updateUser = async (req, res) => {
     });
 
   } catch (error) {
-    return res.status(500).json({
-      status: httpstatustext.ERROR,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
-let deleteUser=async(req,res)=>{
+let deleteUser=async(req,res,next)=>{
   try{
       const getUserId = req.params.id;       
     //   const loggedUser = req.user;
     //   if (loggedUser.role !== "admin" && loggedUser.id !== getUserId) {
-    //   return res.status(403).json({status:httpstatustext.FAIL ,message: "You are not allowed to delete other users" });
+    //   return next(createError("You are not allowed to delete other users", 403));
     // }
      
       const user = await User.findById(getUserId);
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return next(createError("User not found", 404));
       }
 
       await User.findByIdAndDelete(getUserId);
       return res.status(200).json({ message: "User deleted successfully" });
 
   } catch (err) {
-    return res.status(500).json({ message: "Server error", error: err.message });
+    next(err);
   }
 }
 
-const forgotPassword = async (req, res) => {
+const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body || {};
 
     if (!email) {
-      return res.status(400).json({ status: httpstatustext.FAIL, message: "Email is required" });
+      return next(createError("Email is required", 400));
     }
 
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(404).json({ status: httpstatustext.FAIL, message: "This User is Not Found" });
+      return next(createError("This User is Not Found", 404));
     }
 
     // Generate 6-digit Reset Code
@@ -288,16 +268,16 @@ const forgotPassword = async (req, res) => {
     });
 
   } catch (err) {
-    return res.status(500).json({ status: httpstatustext.ERROR, message: err.message });
+    next(err);
   }
 }
 
-const verifyPasswordResetCode = async (req, res) => {
+const verifyPasswordResetCode = async (req, res, next) => {
   try {
     const { resetCode } = req.body || {};
 
     if (!resetCode) {
-      return res.status(400).json({ status: httpstatustext.FAIL, message: "Reset code is required" });
+      return next(createError("Reset code is required", 400));
     }
 
     // Hash the reset code to search in DB
@@ -310,7 +290,7 @@ const verifyPasswordResetCode = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ status: httpstatustext.FAIL, message: "Reset Code Invalid or Expired" });
+      return next(createError("Reset Code Invalid or Expired", 404));
     }
 
     // Generate a temporary reset token for password reset
@@ -331,16 +311,16 @@ const verifyPasswordResetCode = async (req, res) => {
       resetToken: resetToken
     });
   } catch (err) {
-    return res.status(500).json({ status: httpstatustext.ERROR, message: err.message });
+    next(err);
   }
 };
 
-const resetPassword = async (req, res) => {
+const resetPassword = async (req, res, next) => {
   try {
     const { resetToken, newPassword } = req.body || {};
 
     if (!resetToken || !newPassword) {
-      return res.status(400).json({ status: httpstatustext.FAIL, message: "Reset token and new password are required" });
+      return next(createError("Reset token and new password are required", 400));
     }
 
     // Hash the token to compare with stored hash
@@ -353,7 +333,7 @@ const resetPassword = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(400).json({ status: httpstatustext.FAIL, message: "Reset token is invalid or expired" });
+      return next(createError("Reset token is invalid or expired", 400));
     }
 
     // Update password
@@ -377,41 +357,41 @@ const resetPassword = async (req, res) => {
       token 
     });
   } catch (err) {
-    return res.status(500).json({ status: httpstatustext.ERROR, message: err.message });
+    next(err);
   }
 }
 
 
 
-const deactivateAccount=async(req,res)=>{
+const deactivateAccount=async(req,res,next)=>{
   try{
       const loggedUser=req.user;
       console.log(loggedUser);
 
       const user= await User.findById(loggedUser.id);
       if(!user){
-        return res.status(404).json({status:httpstatustext.FAIL,message:"User not found"})
+        return next(createError("User not found", 404))
       }
       user.isActive=false;
       await user.save();
       return res.status(200).json({status:httpstatustext.SUCCESS,message:"Account deactivated successfully"})
   }catch(e){
-    return res.status(500).json({status:httpstatustext.ERROR,message: e.message})
+    next(e)
   }
 }
-const ActiveAccount=async(req,res)=>{
+const ActiveAccount=async(req,res,next)=>{
   try{
       const loggedUser=req.user;
       console.log(loggedUser);
       const user= await User.findById(loggedUser.id);
       if(!user){
-        return res.status(404).json({status:httpstatustext.FAIL,message:"User not found"})
+        return next(createError("User not found", 404))
       }
       user.isActive=true;
       await user.save();
       return res.status(200).json({status:httpstatustext.SUCCESS,message:"Account activated successfully"})
   }catch(e){
-    return res.status(500).json({status:httpstatustext.ERROR,message: e.message})
+    next(e)
   }
 
 }

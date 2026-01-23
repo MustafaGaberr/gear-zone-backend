@@ -15,6 +15,12 @@ dotenv.config({ quiet: true });
 const MONGO_URI = process.env.MONGO_URI;
 const PORT = process.env.PORT || 3000;
 
+// Validate required environment variables
+if (!MONGO_URI) {
+  console.error("❌ MONGO_URI is not defined in environment variables");
+  process.exit(1);
+}
+
 // Initialize Express app
 const app = express();
 
@@ -31,7 +37,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check endpoint for Heroku
+// Health check endpoint for Render
 app.get("/health", (req, res) => {
   res.status(200).json({ 
     status: "ok", 
@@ -165,7 +171,12 @@ const io = init(server);
 mongoose.connect(MONGO_URI, {
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
-  retryWrites: true
+  retryWrites: true,
+  // Production-ready connection pool options
+  maxPoolSize: 10, // Maintain up to 10 socket connections
+  minPoolSize: 2, // Maintain at least 2 socket connections
+  maxIdleTimeMS: 30000, // Close connections after 30s of inactivity
+  connectTimeoutMS: 10000, // Give up initial connection after 10s
 })
   .then(() => {
     console.log("✅ Database connected successfully");
@@ -184,9 +195,9 @@ mongoose.connect(MONGO_URI, {
     process.exit(1);
   });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
+// Graceful shutdown handler
+const gracefulShutdown = (signal) => {
+  console.log(`${signal} signal received: closing HTTP server`);
   server.close(() => {
     console.log('HTTP server closed');
     mongoose.connection.close(false, () => {
@@ -194,4 +205,8 @@ process.on('SIGTERM', () => {
       process.exit(0);
     });
   });
-});
+};
+
+// Handle SIGTERM (Render/Heroku) and SIGINT (local development)
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

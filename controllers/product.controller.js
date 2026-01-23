@@ -2,25 +2,28 @@ const Product = require("../models/product.model.js");
 const Notification = require("../models/notification.model.js");
 const { getIO } = require('../Utilities/socket');
 
+// Helper function to create error with status
+const createError = (message, status = 500) => {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+};
 
-const createProduct = async (req, res) => {
+
+const createProduct = async (req, res, next) => {
   try {
     const sellerId = req.user.id; 
     console.log("Seller ID:", sellerId);
 
     if (!sellerId) {
-      return res.status(401).json({
-        status: "error",
-        code: 401,
-        message: "Unauthorized. Please login first."
-      });
+      return next(createError("Unauthorized. Please login first.", 401));
     }
 
     let imagesPaths = [];
     if (req.files && req.files.length > 0) {
       imagesPaths = req.files.map(file => file.path);
     } else {
-      return res.status(400).json({ status: "error", message: "At least one image is required" });
+      return next(createError("At least one image is required", 400));
     }
 
     console.log("Images paths:", imagesPaths);
@@ -53,11 +56,11 @@ const createProduct = async (req, res) => {
 
   } catch (err) {
     console.error("Create Error:", err); 
-    res.status(400).json({ error: err.message, status: "error", code: 400, data: null });
+    next(err);
   }
 };
 
-const getAllProducts = async (req, res) => {
+const getAllProducts = async (req, res, next) => {
   try {
     const queryObj = { ...req.query };
     const excludedFields = ['page', 'limit', 'sort', 'fields', 'keyword'];
@@ -97,11 +100,11 @@ const getAllProducts = async (req, res) => {
     });
 
   } catch (err) {
-    res.status(400).json({ status: "error", code: 400, message: err.message });
+    next(err);
   }
 };
 
-const getProductById = async (req, res) => {
+const getProductById = async (req, res, next) => {
   try {
     const { id } = req.params;
   const product = await Product.findById(id)
@@ -109,12 +112,7 @@ const getProductById = async (req, res) => {
       .populate("seller", "name email profileImage"); 
 
     if (!product) {
-      return res.status(404).json({
-        status: "error",
-        code: 404,
-        message: "Product not found",
-        data: null,
-      });
+      return next(createError("Product not found", 404));
     }
     res.status(200).json({
       message: "Product retrieved successfully",
@@ -132,13 +130,11 @@ const getProductById = async (req, res) => {
       },
     });
   } catch (error) {
-    res
-      .status(400)
-      .json({ error: error.message, status: "error", code: 400, data: null });
+    next(error);
   }
 };
 
-const updateProductById = async (req, res) => {
+const updateProductById = async (req, res, next) => {
   try {
     const { id } = req.params;
     
@@ -156,12 +152,7 @@ const updateProductById = async (req, res) => {
     );
 
     if (!updatedProduct) {
-      return res.status(404).json({
-        status: "error",
-        code: 404,
-        message: "Product not found or you are not authorized to update it",
-        data: null,
-      });
+      return next(createError("Product not found or you are not authorized to update it", 404));
     }
 
     res.status(200).json({
@@ -172,11 +163,11 @@ const updateProductById = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(400).json({ status: "error", code: 400, message: error.message, data: null });
+    next(error);
   }
 };
 
-const deleteProductById = async (req, res) => {
+const deleteProductById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -189,12 +180,7 @@ const deleteProductById = async (req, res) => {
     const product = await Product.findOneAndDelete(query);
 
     if (!product) {
-      return res.status(404).json({
-        status: "error",
-        code: 404,
-        message: "Product not found or you are not authorized to delete it",
-        data: null,
-      });
+      return next(createError("Product not found or you are not authorized to delete it", 404));
     }
 
     // (Cleanup):
@@ -211,7 +197,7 @@ const deleteProductById = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(400).json({ status: "error", code: 400, message: error.message, data: null });
+    next(error);
   }
 };
 
