@@ -6,6 +6,10 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: [true, "Product name is required"],
     },
+    slug: {
+       type: String,
+        lowercase: true
+       },
     description: {
       type: String,
       required: [true, "Product description is required"],
@@ -22,24 +26,42 @@ const productSchema = new mongoose.Schema(
       min: [0, "Product stock cannot be negative"],
       default: 0,
     },
+    sold: {
+      type: Number,
+      default: 0,
+    },
     category: {
       type: String,
       required: [true, "Product category is required"],
     },
-    images: {
+   imageCover: {
       type: String,
-      required: false,
-      default: "default.webp",
+      required: [true, "Product Image cover is required"],
     },
-    seller: {
-      type: String,
-      required: [true, "Product seller is required"],
+    images: [String], 
+   seller: 
+   {
+      type: mongoose.Schema.ObjectId,
+      ref: 'User',
+      required: [true, "Product must belong to a seller"],
+    },
+    isAvailable: {
+      type: Boolean,
+      default: true,
+    },
+    isAvailable: {
+      type: Boolean,
+      default: true,
     },
   },
   {
     timestamps: true,
   }
 );
+// IndexIng for better search performance
+productSchema.index({ name: 1, description: 1 }); 
+productSchema.index({ slug: 1 }); 
+productSchema.index({ price: 1 });
 const Product = mongoose.model("Product", productSchema);
 
 module.exports = Product;

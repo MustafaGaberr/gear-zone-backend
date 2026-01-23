@@ -6,9 +6,10 @@ const http = require("http");
 const userRoute = require("./routes/user.routes.js");
 const productRoute = require("./routes/product.routes.js");
 const chatRoute = require("./routes/chat.routes.js");
+const cartRoute = require("./routes/cart.routes.js");
+const orderRoute = require("./routes/order.routes.js");
 const { init } = require('./Utilities/socket.js');
 
-// Load environment variables
 dotenv.config({ quiet: true });
 
 const MONGO_URI = process.env.MONGO_URI;
@@ -55,6 +56,16 @@ app.use("/api/chat", (req, res, next) => {
   next();
 }, chatRoute);
 
+app.use("/api/cart", (req, res, next) => {
+  console.log(` [${req.method}] ${req.path}`);
+  next();
+}, cartRoute);
+
+app.use("/api/orders", (req, res, next) => {
+  console.log(` [${req.method}] ${req.path}`);
+  next();
+}, orderRoute);
+
 // Root endpoint - API Documentation
 app.get("/", (req, res) => {
   res.json({ 
@@ -90,6 +101,19 @@ app.get("/", (req, res) => {
           sendMessage: "POST /api/chat/send - Send message (Auth required)",
           getHistory: "GET /api/chat/history/:friendId - Get chat history (Auth required)",
           getConversations: "GET /api/chat/conversations/:userId - Get user conversations (Auth required)"
+        },
+        cart: {
+          getCart: "GET /api/cart - Get user cart (Auth required)",
+          addToCart: "POST /api/cart - Add item to cart (Auth required)",
+          updateQuantity: "PUT /api/cart/:itemId - Update cart item quantity (Auth required)",
+          removeItem: "DELETE /api/cart/:itemId - Remove item from cart (Auth required)",
+          clearCart: "DELETE /api/cart - Clear cart (Auth required)"
+        },
+        orders: {
+          create: "POST /api/orders - Create order (Auth required)",
+          getMyOrders: "GET /api/orders/my-orders - Get user orders (Auth required)",
+          getOrder: "GET /api/orders/:id - Get order details (Auth required)",
+          updateStatus: "PATCH /api/orders/:id - Update order status (Admin/Seller only)"
         },
         socketIO: {
           connection: "WebSocket connection with JWT token in auth.token or query.token",
@@ -171,4 +195,3 @@ process.on('SIGTERM', () => {
     });
   });
 });
-
