@@ -45,6 +45,14 @@ const productSchema = new mongoose.Schema(
       ref: 'User',
       required: [true, "Product must belong to a seller"],
     },
+    isAvailable: {
+      type: Boolean,
+      default: true,
+    },
+    isAvailable: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,

@@ -6,7 +6,9 @@ const dotenv = require("dotenv");
 const userRoute = require("./routes/user.routes.js");
 const productRoute = require("./routes/product.routes.js");
 const chatRoute = require("./routes/chat.routes.js");
+
 const cartRoute = require("./routes/cart.routes.js");
+const orderRoute = require("./routes/order.routes.js");
 const http = require("http"); 
 const { init } = require('./Utilities/socket.js'); 
 dotenv.config({ quiet: true });
@@ -23,6 +25,8 @@ app.use("/api/users", userRoute);
 app.use("/api/products", productRoute);
 app.use("/api/chat", chatRoute); 
 app.use("/api/cart", cartRoute);
+app.use("/api/orders", orderRoute);
+
 
 app.use((err, req, res, next) => {
     console.error(err.stack);
@@ -51,4 +55,4 @@ mongoose.connect(MONGO_URI)
     console.log("Error Connecting to DB:", err);
   });
 
-
+// "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJpZCI6IjY5NzIxMDc1MjRkZGJkYWY0YmUyZmViYyIsInJvbGUiOiJidXllciIsImlhdCI6MTc2OTA4MzA5MCwiZXhwIjoxNzY5MTY5NDkwfQ.fEjlVZrjRKNdY1GAihc8fVPUoxG4_yRATP6AC0NqJOY"
