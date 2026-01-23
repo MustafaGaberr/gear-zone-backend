@@ -24,7 +24,10 @@ app.use("/api/products", productRoute);
 app.use("/api/chat", chatRoute); 
 app.use("/api/cart", cartRoute);
 
-
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ status: "error", message: err.message });
+});
 //
 const server = http.createServer(app);
 

@@ -10,7 +10,8 @@ const {
   updateCartItemQuantity
 } = require('../controllers/cart.controller.js');
 
-
+router.use(verfiytoken);
+router.use(allowedTo('user'));
 router
   .route('/')
   .get(getLoggedUserCart)    
