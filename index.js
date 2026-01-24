@@ -10,13 +10,27 @@ const cartRoute = require("./routes/cart.routes.js");
 const http = require("http"); 
 const { init } = require('./Utilities/socket.js'); 
 dotenv.config({ quiet: true });
-const MONGO_URI = process.env.MONGO_URI;
 
+// Validate required environment variables
+const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) {
+  console.error("❌ MONGO_URI is not defined in environment variables");
+  process.exit(1);
+}
 
 //middlewares
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+// Health check endpoint for Fly.io
+app.get("/health", (req, res) => {
+  res.status(200).json({ 
+    status: "ok", 
+    message: "Server is running",
+    timestamp: new Date().toISOString()
+  });
+});
 
 //routes
 app.use("/api/users", userRoute);
@@ -32,15 +46,12 @@ mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("db connected successfully");
 
+    // Initialize Socket.IO (connection handler is already in socket.js)
     const io = init(server);
 
-    io.on('connection', (socket) => {
-      console.log('Client connected via Socket.io');
-    });
-
-  
-    server.listen(process.env.PORT, () => {
-      console.log(`server is listening on port ${process.env.PORT}`);
+    const PORT = process.env.PORT || 8080;
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ Server is listening on port ${PORT} (0.0.0.0)`);
     });
 
   })
