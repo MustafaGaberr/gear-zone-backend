@@ -1,18 +1,35 @@
 const Message = require("../models/message.model");
 const { getIO } = require("../Utilities/socket"); 
 const mongoose = require('mongoose');
-const sendMessage = async (req, res) => {
+
+const sendMessage = async (req, res, next) => {
   try {
     const { recipientId, content } = req.body;
-    // const senderId = req.user._id; 
-    //for test
-    const senderId = req.body.senderId;
+    
+    if (!recipientId || !content) {
+      return res.status(400).json({ 
+        status: "error", 
+        message: "recipientId and content are required" 
+      });
+    }
+
+    // Use authenticated user ID from JWT token
+    const senderId = req.user.id || req.user._id;
+    
+    if (!senderId) {
+      return res.status(401).json({ 
+        status: "error", 
+        message: "User not authenticated" 
+      });
+    }
+
     const newMessage = await Message.create({
       sender: senderId,
       recipient: recipientId,
       contentMes: content,
     });
 
+    // Emit message to recipient via Socket.IO
     getIO().to(recipientId).emit("private_message", {
       contentMes: content,
       senderId: senderId,
@@ -24,28 +41,37 @@ const sendMessage = async (req, res) => {
       data: newMessage,
     });
   } catch (err) {
-    res.status(400).json({ status: "error", error: err.message });
-    
+    next(err);
   }
 };
 //get all messages between two users
-const getChatHistory = async (req, res) => {
+const getChatHistory = async (req, res, next) => {
   try {
-    // const myId = req.user._id; 
-    const myId = req.query.myId;
+    // Use authenticated user ID from JWT token
+    const myId = req.user.id || req.user._id;
     const { friendId } = req.params; 
 
-   
+    if (!myId) {
+      return res.status(401).json({ 
+        status: "error", 
+        message: "User not authenticated" 
+      });
+    }
+
+    if (!friendId) {
+      return res.status(400).json({ 
+        status: "error", 
+        message: "friendId is required" 
+      });
+    }
+
     const messages = await Message.find({
       $or: [
-    
         { sender: myId, recipient: friendId },
-      
         { sender: friendId, recipient: myId },
       ],
     })
     .sort({ createdAt: 1 }); 
-    //  .populate("sender", "name email"); 
 
     res.status(200).json({
       status: "success",
@@ -53,17 +79,21 @@ const getChatHistory = async (req, res) => {
       data: messages,
     });
   } catch (err) {
-    res.status(400).json({ status: "error", error: err.message });
+    next(err);
   }
 };
 //get all user's chat messages
-const getUserConversations = async (req, res) => {
+const getUserConversations = async (req, res, next) => {
   try {
-    console.log("getUserConversations called");
-    
-    const userId = req.params.userId || req.query.myId; 
+    // Use authenticated user ID from JWT token
+    const userId = req.user.id || req.user._id;
 
-    if (!userId) return res.status(400).json({ error: "User ID is required" });
+    if (!userId) {
+      return res.status(401).json({ 
+        status: "error", 
+        message: "User not authenticated" 
+      });
+    }
 
     const conversations = await Message.aggregate([
       {
@@ -122,8 +152,7 @@ const getUserConversations = async (req, res) => {
       data: conversations,
     });
   } catch (err) {
-    console.error(err);
-    res.status(400).json({ status: "error", error: err.message });
+    next(err);
   }
 };
 

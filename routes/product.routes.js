@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const verfiytoken = require("../middleware/verfiyToken");
+const verifyToken = require("../middleware/verfiyToken");
 const allowedTo = require("../middleware/allowedTo");
+
 const {
   createProduct,
   getAllProducts,
@@ -9,21 +10,31 @@ const {
   updateProductById,
   deleteProductById,
 } = require("../controllers/product.controller.js");
+const upload = require('../cloudinary');
+// ---------------------------------------------------------
+// 1. Public Routes
+// ---------------------------------------------------------
+router.route("/")
+  .get(getAllProducts) 
+  .post(
+    verifyToken, 
+    allowedTo("admin", "seller"), 
+    upload.array('images', 5),
+    createProduct
+  );
 
-//CRUD Operations for Products
+router.route("/:id")
+  .get(getProductById) 
+  .put(
+    verifyToken, 
+    allowedTo("admin", "seller"), 
+    upload.array('images', 5),
+    updateProductById
+  )
+  .delete(
+    verifyToken, 
+    allowedTo("admin", "seller"), 
+    deleteProductById
+  );
 
-//CREATE - POST /api/products
-router.post("/", createProduct);
-
-//READ - GET /api/products
-router.get("/", getAllProducts);
-
-//READ - GET /api/products/:id
-router.get("/:id", getProductById);
-
-//UPDATE - PUT /api/products/:id
-router.put("/:id", updateProductById);
-
-//DELETE - DELETE /api/products/:id
-router.delete("/:id", deleteProductById);
 module.exports = router;
