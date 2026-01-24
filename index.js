@@ -39,24 +39,28 @@ app.use("/api/chat", chatRoute);
 // app.use("/api/cart", cartRoute);
 
 
-//
+// Create HTTP server
 const server = http.createServer(app);
 
+// Initialize Socket.IO (connection handler is already in socket.js)
+const io = init(server);
+
+// Start server immediately (don't wait for MongoDB)
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server is listening on port ${PORT} (0.0.0.0)`);
+  console.log(`🌐 Health check available at: http://0.0.0.0:${PORT}/health`);
+});
+
+// Connect to MongoDB (non-blocking)
 mongoose.connect(MONGO_URI)
   .then(() => {
-    console.log("db connected successfully");
-
-    // Initialize Socket.IO (connection handler is already in socket.js)
-    const io = init(server);
-
-    const PORT = process.env.PORT || 8080;
-    server.listen(PORT, '0.0.0.0', () => {
-      console.log(`✅ Server is listening on port ${PORT} (0.0.0.0)`);
-    });
-
+    console.log("✅ Database connected successfully");
   })
   .catch((err) => {
-    console.log("Error Connecting to DB:", err);
+    console.error("❌ Error Connecting to DB:", err);
+    // Don't exit - server should still run even if DB connection fails
+    // This allows health checks to pass while DB issues are resolved
   });
 
 
