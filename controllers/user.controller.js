@@ -85,7 +85,16 @@ let Login=async(req,res,next)=>{
         const token = await jwt.sign({email:user.email, id:user._id, role:user.role}, process.env.JWT_SECRET, { expiresIn: '1d'})
         user.token = token
 
-        return res.status(200).json({status:httpstatustext.SUCCESS,data:{token}})
+        return res.status(200).json({status:httpstatustext.SUCCESS,data:{token , user:{
+          id:user._id,
+          firstName:user.firstName,
+          lastName:user.lastName,
+          userName:user.userName,
+          email:user.email,
+          phone:user.phone,
+          role:user.role,
+          avatar:user.avatar
+        }}})
     } catch(e) {
         next(e)
     }
