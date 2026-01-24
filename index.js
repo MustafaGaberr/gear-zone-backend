@@ -23,6 +23,21 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// Root endpoint
+app.get("/", (req, res) => {
+  res.status(200).json({ 
+    status: "ok", 
+    message: "Welcome to Gear Zone API",
+    version: "1.0.0",
+    endpoints: {
+      health: "/health",
+      users: "/api/users",
+      products: "/api/products",
+      chat: "/api/chat"
+    }
+  });
+});
+
 // Health check endpoint for Fly.io
 app.get("/health", (req, res) => {
   res.status(200).json({ 
