@@ -51,7 +51,7 @@ app.get("/health", (req, res) => {
 app.use("/api/users", userRoute);
 app.use("/api/products", productRoute);
 app.use("/api/chat", chatRoute); 
-// app.use("/api/cart", cartRoute);
+app.use("/api/cart", cartRoute);
 
 
 // Create HTTP server
