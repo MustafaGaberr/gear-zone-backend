@@ -22,7 +22,7 @@ app.use(cors());
 app.use("/api/users", userRoute);
 app.use("/api/products", productRoute);
 app.use("/api/chat", chatRoute); 
-app.use("/api/cart", cartRoute);
+// app.use("/api/cart", cartRoute);
 
 
 //

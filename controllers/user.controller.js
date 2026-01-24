@@ -86,135 +86,320 @@ let Login=async(req,res)=>{
         return res.status(500).json({status:httpstatustext.ERROR,message: e.message})
     }
 }
-let getALluser=async(req,res)=>{
-    const query=req.query
-    const limit=query.limit ;
-    const page=query.page || 1
-    const skip=(page-1)*limit
-    try{
-        const getAlluser=await User.find({},{"__v":false,"password":false}).limit(limit).skip(skip);
-        return res.status(200).json({status:httpstatustext.SUCCESS,data:{Users:{
-          id:getAlluser._id,
-          firstName:getAlluser.firstName,
-          lastName:getAlluser.lastName,
-          userName:getAlluser.userName,
-          email:getAlluser.email,
-          phone:getAlluser.phone,
-          role:getAlluser.role,
-          token:getAlluser.token
-        }}})
-    }catch(e){
-      return res.status(500).json({
+// let getALluser=async(req,res)=>{
+//     const query=req.query
+//     const limit=query.limit ;
+//     const page=query.page || 1
+//     const skip=(page-1)*limit
+//     try{
+//         const getAlluser=await User.find({},{"__v":false,"password":false}).limit(limit).skip(skip);
+//         return res.status(200).json({status:httpstatustext.SUCCESS,data:{Users:{
+//           id:getAlluser._id,
+//           firstName:getAlluser.firstName,
+//           lastName:getAlluser.lastName,
+//           userName:getAlluser.userName,
+//           email:getAlluser.email,
+//           phone:getAlluser.phone,
+//           role:getAlluser.role,
+//           token:getAlluser.token
+//         }}})
+//     }catch(e){
+//       return res.status(500).json({
+//       status: httpstatustext.ERROR,
+//       message: e.message
+//     });
+//     }
+// }
+
+// let getAlluser = async (req, res) => {
+//   const query = req.query;
+//   const limit = parseInt(query.limit) || 10; // ضبط limit لو مش موجود
+//   const page = parseInt(query.page) || 1;
+//   const skip = (page - 1) * limit;
+
+//   try {
+//     const users = await User.find({}, { __v: false, password: false })
+//                             .limit(limit)
+//                             .skip(skip);
+
+//     // تحويل _id لـ id لكل يوزر
+//     const usersWithId = users.map(u => ({
+//       id: u._id,
+//       firstName: u.firstName,
+//       lastName: u.lastName,
+//       userName: u.userName,
+//       email: u.email,
+//       phone: u.phone,
+//       role: u.role,
+//       token: u.token
+//     }));
+
+//     return res.status(200).json({
+//       status: httpstatustext.SUCCESS,
+//       results: usersWithId.length,
+//       data: { Users: usersWithId }
+//     });
+
+//   } catch (e) {
+//     return res.status(500).json({
+//       status: httpstatustext.ERROR,
+//       message: e.message
+//     });
+//   }
+// };
+
+
+
+let getALluser = async (req, res) => {
+  const query = req.query;
+  const limit = parseInt(query.limit) || 10; // عدد اليوزرز لكل صفحة
+  const page = parseInt(query.page) || 1;    // الصفحة الحالية
+  const skip = (page - 1) * limit;
+
+  try {
+    // جلب جميع اليوزرز مع حذف __v و password
+    const users = await User.find({}, { __v: false, password: false })
+                            .limit(limit)
+                            .skip(skip);
+
+    // تحويل _id لـ id لكل يوزر
+    const usersWithId = users.map(u => ({
+      id: u._id,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      userName: u.userName,
+      email: u.email,
+      phone: u.phone,
+      role: u.role,
+      token: u.token
+    }));
+
+    // حساب العدد الكلي لليوزرز
+    const totalUsers = await User.countDocuments();
+
+    // حساب العدد الكلي للصفحات
+    const totalPages = Math.ceil(totalUsers / limit);
+
+    return res.status(200).json({
+      status: httpstatustext.SUCCESS,
+      results: usersWithId.length,
+      pagination: {
+        totalUsers,
+        totalPages,
+        currentPage: page,
+        limit
+      },
+      data: { Users: usersWithId }
+    });
+
+  } catch (e) {
+    return res.status(500).json({
       status: httpstatustext.ERROR,
       message: e.message
     });
-    }
-}
-let updateUser = async (req, res) => {
-  try {
-    const targetUserId = req.params.id;
-    const { currentPassword, newPassword, confirmPassword } = req.body;
+  }
+};
 
-    // Check if user is trying to change password
-    if (currentPassword || newPassword || confirmPassword) {
-      // All password fields are required
-      if (!currentPassword || !newPassword || !confirmPassword) {
+
+//   try {
+//     const targetUserId = req.user.id;
+//     const { currentPassword, newPassword, confirmPassword } = req.body;
+
+//     // Check if user is trying to change password
+//     if (currentPassword || newPassword || confirmPassword) {
+//       // All password fields are required
+//       if (!currentPassword || !newPassword || !confirmPassword) {
+//         return res.status(400).json({
+//           status: httpstatustext.FAIL,
+//           message: "currentPassword, newPassword and confirmPassword are all required"
+//         });
+//       }
+
+//       // Check if new passwords match
+//       if (newPassword !== confirmPassword) {
+//         return res.status(400).json({
+//           status: httpstatustext.FAIL,
+//           message: "New password and confirm password do not match"
+//         });
+//       }
+
+//       const user = await User.findById(targetUserId);
+
+//       if (!user) {
+//         return res.status(404).json({
+//           status: httpstatustext.FAIL,
+//           message: "User not found"
+//         });
+//       }
+
+//       // Verify current password
+//       const isPasswordCorrect = await bcrypt.compare(currentPassword, user.password);
+
+//       if (!isPasswordCorrect) {
+//         return res.status(401).json({
+//           status: httpstatustext.FAIL,
+//           message: "Current password is incorrect"
+//         });
+//       }
+
+//       // Hash and save new password
+//       user.password = await bcrypt.hash(newPassword, 10);
+//       user.passwordChangedAt = Date.now();
+
+//       // Also update other fields if provided
+//       const allowedFields = ["firstName", "lastName", "userName", "email", "phone"];
+//       allowedFields.forEach((field) => {
+//         if (req.body[field]) {
+//           user[field] = req.body[field];
+//         }
+//       });
+
+//       await user.save();
+
+//       user.password = undefined;
+
+//       return res.status(200).json({
+//         status: httpstatustext.SUCCESS,
+//         message: "User updated successfully",
+//         user,
+//       });
+//     }
+
+//     // Regular update (no password change)
+//     const allowedFields = ["firstName", "lastName", "userName", "email", "phone"];
+
+//     const updates = {};
+
+//     Object.keys(req.body).forEach((field) => {
+//       if (allowedFields.includes(field)) {
+//         updates[field] = req.body[field];
+//       }
+//     });
+
+//     if (Object.keys(updates).length === 0) {
+//       return res.status(400).json({
+//         status: httpstatustext.FAIL,
+//         message: "No valid fields to update"
+//       });
+//     }
+
+//     const updatedUser = await User.findByIdAndUpdate(
+//       targetUserId,
+//       updates,
+//       {
+//         new: true,
+//         runValidators: true,
+//       }
+//     );
+
+//     if (!updatedUser) {
+//       return res.status(404).json({
+//         status: httpstatustext.FAIL,
+//         message: "User not found"
+//       });
+//     }
+
+//     updatedUser.password = undefined;
+
+//     return res.status(200).json({
+//       status: httpstatustext.SUCCESS,
+//       message: "User updated successfully",
+//       user: updatedUser,
+//     });
+
+//   } catch (error) {
+//     return res.status(500).json({
+//       status: httpstatustext.ERROR,
+//       message: error.message,
+//     });
+//   }
+// };
+
+const updateUser = async (req, res) => {
+  try {
+    const targetUserId = req.user.id;
+
+    const {
+      currentPassword,
+      newPassword,
+      confirmPassword,
+      firstName,
+      lastName,
+      userName,
+      email,
+      phone
+    } = req.body;
+
+    const user = await User.findById(targetUserId);
+
+    if (!user) {
+      return res.status(404).json({
+        status: httpstatustext.FAIL,
+        message: "User not found",
+      });
+    }
+
+   
+    if (currentPassword) {
+      if (!newPassword || !confirmPassword) {
         return res.status(400).json({
           status: httpstatustext.FAIL,
-          message: "currentPassword, newPassword and confirmPassword are all required"
+          message: "newPassword and confirmPassword are required",
         });
       }
 
-      // Check if new passwords match
       if (newPassword !== confirmPassword) {
         return res.status(400).json({
           status: httpstatustext.FAIL,
-          message: "New password and confirm password do not match"
+          message: "New password and confirm password do not match",
         });
       }
 
-      const user = await User.findById(targetUserId);
-
-      if (!user) {
-        return res.status(404).json({
-          status: httpstatustext.FAIL,
-          message: "User not found"
-        });
-      }
-
-      // Verify current password
-      const isPasswordCorrect = await bcrypt.compare(currentPassword, user.password);
+      const isPasswordCorrect = await bcrypt.compare(
+        currentPassword,
+        user.password
+      );
 
       if (!isPasswordCorrect) {
         return res.status(401).json({
           status: httpstatustext.FAIL,
-          message: "Current password is incorrect"
+          message: "Current password is incorrect",
         });
       }
 
-      // Hash and save new password
       user.password = await bcrypt.hash(newPassword, 10);
       user.passwordChangedAt = Date.now();
-
-      // Also update other fields if provided
-      const allowedFields = ["firstName", "lastName", "userName", "email", "phone"];
-      allowedFields.forEach((field) => {
-        if (req.body[field]) {
-          user[field] = req.body[field];
-        }
-      });
-
-      await user.save();
-
-      user.password = undefined;
-
-      return res.status(200).json({
-        status: httpstatustext.SUCCESS,
-        message: "User updated successfully",
-        user,
-      });
     }
 
-    // Regular update (no password change)
-    const allowedFields = ["firstName", "lastName", "userName", "email", "phone"];
+   
+    const allowedFields = {
+      firstName,
+      lastName,
+      userName,
+      email,
+      phone,
+    };
 
-    const updates = {};
-
-    Object.keys(req.body).forEach((field) => {
-      if (allowedFields.includes(field)) {
-        updates[field] = req.body[field];
+    Object.keys(allowedFields).forEach((field) => {
+      if (allowedFields[field] !== undefined) {
+        user[field] = allowedFields[field];
       }
     });
 
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({
-        status: httpstatustext.FAIL,
-        message: "No valid fields to update"
-      });
-    }
-
-    const updatedUser = await User.findByIdAndUpdate(
-      targetUserId,
-      updates,
-      {
-        new: true,
-        runValidators: true,
-      }
+    await user.save();
+    const newToken = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
     );
 
-    if (!updatedUser) {
-      return res.status(404).json({
-        status: httpstatustext.FAIL,
-        message: "User not found"
-      });
-    }
-
-    updatedUser.password = undefined;
+    user.password = undefined;
 
     return res.status(200).json({
       status: httpstatustext.SUCCESS,
       message: "User updated successfully",
-      user: updatedUser,
+      user,
+      token:newToken
     });
 
   } catch (error) {
@@ -224,6 +409,7 @@ let updateUser = async (req, res) => {
     });
   }
 };
+
 
 let deleteUser=async(req,res)=>{
   try{

@@ -17,7 +17,7 @@ route.put('/resetpassword', resetPassword);
 
 route.get('/', verfiytoken, allowedTo('admin'), getALluser);
 
-route.put('/:id', updateUser);
+route.put('/updataprofile', verfiytoken,updateUser);
 route.delete('/:id', verfiytoken,allowedTo('admin'), deleteUser);
 
 route.patch('/deactivate',verfiytoken, deactivateAccount);
