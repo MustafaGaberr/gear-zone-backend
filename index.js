@@ -7,8 +7,9 @@ const userRoute = require("./routes/user.routes.js");
 const productRoute = require("./routes/product.routes.js");
 const chatRoute = require("./routes/chat.routes.js");
 const cartRoute = require("./routes/cart.routes.js");
-const http = require("http"); 
-const { init } = require('./Utilities/socket.js'); 
+const orderRoute = require("./routes/order.routes.js");
+const http = require("http");
+const { init } = require('./Utilities/socket.js');
 dotenv.config({ quiet: true });
 
 // Validate required environment variables
@@ -25,23 +26,25 @@ app.use(cors());
 
 // Root endpoint
 app.get("/", (req, res) => {
-  res.status(200).json({ 
-    status: "ok", 
+  res.status(200).json({
+    status: "ok",
     message: "Welcome to Gear Zone API",
     version: "1.0.0",
     endpoints: {
       health: "/health",
       users: "/api/users",
       products: "/api/products",
-      chat: "/api/chat"
+      chat: "/api/chat",
+      cart: "/api/cart",
+      orders: "/api/orders"
     }
   });
 });
 
 // Health check endpoint for Fly.io
 app.get("/health", (req, res) => {
-  res.status(200).json({ 
-    status: "ok", 
+  res.status(200).json({
+    status: "ok",
     message: "Server is running",
     timestamp: new Date().toISOString()
   });
@@ -50,8 +53,9 @@ app.get("/health", (req, res) => {
 //routes
 app.use("/api/users", userRoute);
 app.use("/api/products", productRoute);
-app.use("/api/chat", chatRoute); 
+app.use("/api/chat", chatRoute);
 app.use("/api/cart", cartRoute);
+app.use("/api/orders", orderRoute);
 
 
 // Create HTTP server

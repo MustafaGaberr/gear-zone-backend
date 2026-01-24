@@ -1,12 +1,12 @@
 const express = require("express");
 const route = express.Router();
 
-const {Register,Login,getALluser,updateUser,deleteUser,forgotPassword,verifyPasswordResetCode,resetPassword,deactivateAccount,ActiveAccount} = require("../controllers/user.controller");
+const { Register, Login, getALluser, updateUser, deleteUser, forgotPassword, verifyPasswordResetCode, resetPassword, deactivateAccount, ActiveAccount } = require("../controllers/user.controller");
 
 const verfiytoken = require("../middleware/verfiyToken");
 const allowedTo = require("../middleware/allowedTo");
 
-route.post('/register',Register);
+route.post('/register', Register);
 route.post('/login', Login);
 
 
@@ -17,10 +17,10 @@ route.put('/resetpassword', resetPassword);
 
 route.get('/', verfiytoken, allowedTo('admin'), getALluser);
 
-route.put('/updataprofile', verfiytoken,updateUser);
-route.delete('/:id', verfiytoken,allowedTo('admin'), deleteUser);
+route.put('/updateprofile', verfiytoken, updateUser);
+route.delete('/:id', verfiytoken, allowedTo('admin'), deleteUser);
 
-route.patch('/deactivate',verfiytoken, deactivateAccount);
-route.patch('/activate',verfiytoken , ActiveAccount);
+route.patch('/deactivate', verfiytoken, deactivateAccount);
+route.patch('/activate', verfiytoken, ActiveAccount);
 
-module.exports=route
+module.exports = route
