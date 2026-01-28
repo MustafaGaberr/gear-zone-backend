@@ -11,16 +11,16 @@ const {
 } = require('../controllers/cart.controller.js');
 
 router.use(verfiytoken);
-router.use(allowedTo('user'));
+router.use(allowedTo('user', 'buyer'));
 router
   .route('/')
-  .get(getLoggedUserCart)    
-  .post(addToCart)           
-  .delete(clearCart);        
+  .get(getLoggedUserCart)
+  .post(addToCart)
+  .delete(clearCart);
 
 router
   .route('/:itemId')
-  .delete(removeCartItem)       
-  .put(updateCartItemQuantity); 
+  .delete(removeCartItem)
+  .put(updateCartItemQuantity);
 
 module.exports = router;
